@@ -33,22 +33,16 @@ class BoxSourceAdapter(DocumentSourcePort):
 
     @classmethod
     def bind_file_reference(cls, *, provider_config: dict[str, Any], file_reference: str) -> None:
-        """Validate a Box file ID and set it as the single file to ingest.
+        """Set a Box file ID as the single file to ingest.
 
-        Credentials and connection details are read from ``provider_config``
-        only; ``file_reference`` carries nothing but the Box file ID.
+        ``file_reference`` is the Box file ID the producer supplies for the
+        event; batch ingestion (``fetch_documents``) already accepts a file
+        ID via ``file_id`` and fetches/validates it against the Box API, so
+        this only does basic input validation rather than duplicating that
+        call here.
         """
-        credentials_json = provider_config.get("credentials_json")
-        credentials_path = provider_config.get("credentials_json_path") or provider_config.get("credentials_path")
-
-        client = get_box_client(credentials_json=credentials_json, credentials_path=credentials_path)
-
-        try:
-            file_info = client.files.get_file_by_id(file_reference)
-        except Exception as exc:
-            raise ValueError(f"File reference is not a valid Box file ID: {file_reference}") from exc
-        if getattr(file_info, "type", None) != "file":
-            raise ValueError(f"File reference is not a Box file: {file_reference}")
+        if not file_reference or not file_reference.strip():
+            raise ValueError("File reference must be a non-empty Box file ID")
 
         provider_config["file_id"] = file_reference
 
