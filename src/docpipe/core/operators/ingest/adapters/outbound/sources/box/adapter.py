@@ -31,6 +31,27 @@ class BoxSourceAdapter(DocumentSourcePort):
         # auth flow is performed for all documents in a batch.
         self._client_cache: dict[str, BoxClient] = {}
 
+    @classmethod
+    def bind_file_reference(cls, *, provider_config: dict[str, Any], file_reference: str) -> None:
+        """Validate a Box file ID and set it as the single file to ingest.
+
+        Credentials and connection details are read from ``provider_config``
+        only; ``file_reference`` carries nothing but the Box file ID.
+        """
+        credentials_json = provider_config.get("credentials_json")
+        credentials_path = provider_config.get("credentials_json_path") or provider_config.get("credentials_path")
+
+        client = get_box_client(credentials_json=credentials_json, credentials_path=credentials_path)
+
+        try:
+            file_info = client.files.get_file_by_id(file_reference)
+        except Exception as exc:
+            raise ValueError(f"File reference is not a valid Box file ID: {file_reference}") from exc
+        if getattr(file_info, "type", None) != "file":
+            raise ValueError(f"File reference is not a Box file: {file_reference}")
+
+        provider_config["file_id"] = file_reference
+
     def _get_box_client(self, *, config: BoxSourceConfig) -> BoxClient:
         """Return a cached authenticated Box client for the given credentials.
 

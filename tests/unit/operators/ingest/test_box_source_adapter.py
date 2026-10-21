@@ -692,6 +692,76 @@ class TestBoxFetchBinaryContent:
 
 
 # ---------------------------------------------------------------------------
+# bind_file_reference
+# ---------------------------------------------------------------------------
+
+
+class TestBoxBindFileReference:
+    def test_valid_file_reference_sets_file_id(self):
+        """A file_reference that resolves to a Box file is set as file_id."""
+        file_info = types.SimpleNamespace(id="file99", type="file", name="single.pdf")
+        mock_client = Mock()
+        mock_client.files.get_file_by_id.return_value = file_info
+        provider_config = {"credentials_json_path": "/tmp/box.json", "folder_id": "123"}
+
+        with patch(
+            "docpipe.core.operators.ingest.adapters.outbound.sources.box.adapter.get_box_client",
+            return_value=mock_client,
+        ):
+            BoxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="file99")
+
+        assert provider_config["file_id"] == "file99"
+        mock_client.files.get_file_by_id.assert_called_once_with("file99")
+
+    def test_credentials_are_untouched(self):
+        """bind_file_reference only adds file_id; it never reads or rewrites credentials."""
+        file_info = types.SimpleNamespace(id="file1", type="file")
+        mock_client = Mock()
+        mock_client.files.get_file_by_id.return_value = file_info
+        provider_config = {"credentials_json_path": "/tmp/box.json"}
+
+        with patch(
+            "docpipe.core.operators.ingest.adapters.outbound.sources.box.adapter.get_box_client",
+            return_value=mock_client,
+        ):
+            BoxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="file1")
+
+        assert provider_config["credentials_json_path"] == "/tmp/box.json"
+        assert "credentials_json" not in provider_config
+
+    def test_invalid_file_reference_raises_value_error(self):
+        """An unresolvable file_reference raises a clear ValueError."""
+        mock_client = Mock()
+        mock_client.files.get_file_by_id.side_effect = RuntimeError("404 not found")
+        provider_config = {"credentials_json_path": "/tmp/box.json"}
+
+        with patch(
+            "docpipe.core.operators.ingest.adapters.outbound.sources.box.adapter.get_box_client",
+            return_value=mock_client,
+        ):
+            with pytest.raises(ValueError, match="not a valid Box file ID"):
+                BoxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="bad-id")
+
+        assert "file_id" not in provider_config
+
+    def test_non_file_reference_raises_value_error(self):
+        """A file_reference that resolves to something other than a file is rejected."""
+        file_info = types.SimpleNamespace(id="folder1", type="folder")
+        mock_client = Mock()
+        mock_client.files.get_file_by_id.return_value = file_info
+        provider_config = {"credentials_json_path": "/tmp/box.json"}
+
+        with patch(
+            "docpipe.core.operators.ingest.adapters.outbound.sources.box.adapter.get_box_client",
+            return_value=mock_client,
+        ):
+            with pytest.raises(ValueError, match="not a Box file"):
+                BoxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="folder1")
+
+        assert "file_id" not in provider_config
+
+
+# ---------------------------------------------------------------------------
 # box/auth.py — get_box_client
 # ---------------------------------------------------------------------------
 
