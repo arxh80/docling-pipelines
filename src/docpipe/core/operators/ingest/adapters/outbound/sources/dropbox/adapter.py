@@ -41,21 +41,16 @@ class DropboxSourceAdapter(DocumentSourcePort[DropboxSourceConfig]):
 
     @classmethod
     def bind_file_reference(cls, *, provider_config: dict[str, Any], file_reference: str) -> None:
-        """Validate a Dropbox file reference and set it as the single file to ingest.
+        """Set a Dropbox file reference as the single file to ingest.
 
-        Credentials and connection details are read from ``provider_config``
-        only; ``file_reference`` carries nothing but the Dropbox path or id.
+        ``file_reference`` is the Dropbox path or id the producer supplies
+        for the event; batch ingestion (``fetch_documents``) already accepts
+        a reference via ``file_path`` and fetches/validates it against the
+        Dropbox API, so this only does basic input validation rather than
+        duplicating that call here.
         """
-        adapter = cls()
-        config = adapter.build_config_from_operator_params(provider_config=provider_config)
-        client = adapter._get_dropbox_client(config=config)
-
-        try:
-            entry = client.files_get_metadata(file_reference)
-        except (ApiError, BadInputError, HttpError) as exc:
-            raise ValueError(f"File reference is not a valid Dropbox path or id: {file_reference}") from exc
-        if not isinstance(entry, FileMetadata):
-            raise ValueError(f"File reference is not a Dropbox file: {file_reference}")
+        if not file_reference or not file_reference.strip():
+            raise ValueError("File reference must be a non-empty Dropbox path or id")
 
         provider_config["file_path"] = file_reference
 
