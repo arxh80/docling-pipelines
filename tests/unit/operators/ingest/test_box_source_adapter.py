@@ -732,6 +732,15 @@ class TestBoxBindFileReference:
 
         assert "file_id" not in provider_config
 
+    def test_none_file_reference_raises_value_error(self):
+        """A None file_reference raises a clear ValueError, not an AttributeError."""
+        provider_config = {"credentials_json_path": "/tmp/box.json"}
+
+        with pytest.raises(ValueError, match="non-empty Box file ID"):
+            BoxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference=None)
+
+        assert "file_id" not in provider_config
+
 
 # ---------------------------------------------------------------------------
 # box/auth.py — get_box_client

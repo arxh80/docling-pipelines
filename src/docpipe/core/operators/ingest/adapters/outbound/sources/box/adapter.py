@@ -31,8 +31,8 @@ class BoxSourceAdapter(DocumentSourcePort):
         # auth flow is performed for all documents in a batch.
         self._client_cache: dict[str, BoxClient] = {}
 
-    @classmethod
-    def bind_file_reference(cls, *, provider_config: dict[str, Any], file_reference: str) -> None:
+    @staticmethod
+    def bind_file_reference(*, provider_config: dict[str, Any], file_reference: str) -> None:
         """Set a Box file ID as the single file to ingest.
 
         ``file_reference`` is the Box file ID the producer supplies for the
