@@ -562,3 +562,73 @@ class TestClientCaching:
         kwargs = mock_dropbox.call_args.kwargs
         assert kwargs["oauth2_refresh_token"] == "refresh"
         assert kwargs["app_key"] == "key"
+
+
+class TestBindFileReference:
+    """Test DropboxSourceAdapter.bind_file_reference."""
+
+    def test_valid_path_reference_sets_file_path(self):
+        """A file_reference that resolves to a Dropbox file is set as file_path."""
+        client = Mock()
+        client.files_get_metadata.return_value = make_file(name="q1.pdf", path="/Reports/q1.pdf")
+        provider_config = {"access_token": "token-value", "folder_path": "/Reports"}  # pragma: allowlist secret
+
+        with patch.object(DropboxSourceAdapter, "_get_dropbox_client", return_value=client):
+            DropboxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="/Reports/q1.pdf")
+
+        assert provider_config["file_path"] == "/Reports/q1.pdf"
+        client.files_get_metadata.assert_called_once_with("/Reports/q1.pdf")
+
+    def test_valid_id_reference_sets_file_path(self):
+        """A Dropbox file id reference is accepted as-is."""
+        client = Mock()
+        client.files_get_metadata.return_value = make_file(name="q1.pdf", path="/Reports/q1.pdf", file_id="id:abc123")
+        provider_config = {"access_token": "token-value"}  # pragma: allowlist secret
+
+        with patch.object(DropboxSourceAdapter, "_get_dropbox_client", return_value=client):
+            DropboxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="id:abc123")
+
+        assert provider_config["file_path"] == "id:abc123"
+
+    def test_credentials_are_untouched(self):
+        """bind_file_reference only adds file_path; it never reads or rewrites credentials."""
+        client = Mock()
+        client.files_get_metadata.return_value = make_file(name="q1.pdf", path="/q1.pdf")
+        provider_config = {"access_token": "token-value"}  # pragma: allowlist secret
+
+        with patch.object(DropboxSourceAdapter, "_get_dropbox_client", return_value=client):
+            DropboxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="/q1.pdf")
+
+        assert provider_config["access_token"] == "token-value"  # pragma: allowlist secret
+        assert "refresh_token" not in provider_config
+
+    def test_invalid_file_reference_raises_value_error(self):
+        """An unresolvable file_reference raises a clear ValueError."""
+        client = Mock()
+        client.files_get_metadata.side_effect = make_api_error("path/not_found")
+        provider_config = {"access_token": "token-value"}  # pragma: allowlist secret
+
+        with patch.object(DropboxSourceAdapter, "_get_dropbox_client", return_value=client):
+            with pytest.raises(ValueError, match="not a valid Dropbox path or id"):
+                DropboxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="/missing.pdf")
+
+        assert "file_path" not in provider_config
+
+    def test_folder_reference_raises_value_error(self):
+        """A file_reference that resolves to a folder is rejected."""
+        client = Mock()
+        client.files_get_metadata.return_value = FolderMetadata(
+            name="sub", id="id:folder", path_lower="/reports/sub", path_display="/Reports/sub"
+        )
+        provider_config = {"access_token": "token-value"}  # pragma: allowlist secret
+
+        with patch.object(DropboxSourceAdapter, "_get_dropbox_client", return_value=client):
+            with pytest.raises(ValueError, match="not a Dropbox file"):
+                DropboxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="/Reports/sub")
+
+        assert "file_path" not in provider_config
+
+    def test_missing_credentials_raise_value_error(self):
+        """Missing credentials in provider_config fail with a clear error, not an AttributeError."""
+        with pytest.raises(ValueError, match="credentials missing"):
+            DropboxSourceAdapter.bind_file_reference(provider_config={}, file_reference="/q1.pdf")

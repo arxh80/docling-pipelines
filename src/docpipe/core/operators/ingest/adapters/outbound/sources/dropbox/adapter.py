@@ -39,6 +39,26 @@ class DropboxSourceAdapter(DocumentSourcePort[DropboxSourceConfig]):
         # client (and its token refresh state) is reused for all documents in a batch.
         self._client_cache: dict[str, Dropbox] = {}
 
+    @classmethod
+    def bind_file_reference(cls, *, provider_config: dict[str, Any], file_reference: str) -> None:
+        """Validate a Dropbox file reference and set it as the single file to ingest.
+
+        Credentials and connection details are read from ``provider_config``
+        only; ``file_reference`` carries nothing but the Dropbox path or id.
+        """
+        adapter = cls()
+        config = adapter.build_config_from_operator_params(provider_config=provider_config)
+        client = adapter._get_dropbox_client(config=config)
+
+        try:
+            entry = client.files_get_metadata(file_reference)
+        except (ApiError, BadInputError, HttpError) as exc:
+            raise ValueError(f"File reference is not a valid Dropbox path or id: {file_reference}") from exc
+        if not isinstance(entry, FileMetadata):
+            raise ValueError(f"File reference is not a Dropbox file: {file_reference}")
+
+        provider_config["file_path"] = file_reference
+
     # ------------------------------------------------------------------
     # Client handling
     # ------------------------------------------------------------------
