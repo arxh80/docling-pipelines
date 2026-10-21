@@ -609,3 +609,12 @@ class TestBindFileReference:
             DropboxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference="   ")
 
         assert "file_path" not in provider_config
+
+    def test_none_file_reference_raises_value_error(self):
+        """A None file_reference raises a clear ValueError, not an AttributeError."""
+        provider_config = {"access_token": "token-value"}  # pragma: allowlist secret
+
+        with pytest.raises(ValueError, match="non-empty Dropbox path or id"):
+            DropboxSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference=None)
+
+        assert "file_path" not in provider_config

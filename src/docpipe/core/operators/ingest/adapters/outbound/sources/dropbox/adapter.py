@@ -39,8 +39,8 @@ class DropboxSourceAdapter(DocumentSourcePort[DropboxSourceConfig]):
         # client (and its token refresh state) is reused for all documents in a batch.
         self._client_cache: dict[str, Dropbox] = {}
 
-    @classmethod
-    def bind_file_reference(cls, *, provider_config: dict[str, Any], file_reference: str) -> None:
+    @staticmethod
+    def bind_file_reference(*, provider_config: dict[str, Any], file_reference: str) -> None:
         """Set a Dropbox file reference as the single file to ingest.
 
         ``file_reference`` is the Dropbox path or id the producer supplies
