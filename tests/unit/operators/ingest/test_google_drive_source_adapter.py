@@ -626,18 +626,15 @@ class TestBindFileReference:
             "",
             "   ",
             None,
-            " doc123",
-            "https://drive.google.com/file/d/doc123/view",
-            "/Reports/q1.pdf",
             "$HOME",
             "${GOOGLE_APPLICATION_CREDENTIALS}",
         ],
     )
     def test_invalid_file_reference_raises_value_error(self, file_reference):
-        """Empty, blank, None, URL, path and env-var references raise a clear ValueError."""
+        """Empty, blank, None and env-var references raise a clear ValueError."""
         provider_config = {"service_account_json_path": "/tmp/sa.json"}
 
-        with pytest.raises(ValueError, match="must be a Google Drive file ID"):
+        with pytest.raises(ValueError, match="Google Drive file ID"):
             GoogleDriveSourceAdapter.bind_file_reference(provider_config=provider_config, file_reference=file_reference)
 
         assert "file_id" not in provider_config

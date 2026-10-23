@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-import re
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -22,8 +21,6 @@ from docpipe.core.operators.operator_utils import resolve_env_var
 from docpipe.utils.infrastructure.logging import get_logger
 
 logger = get_logger(__name__)
-
-_DRIVE_FILE_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 
 @register_source_adapter
@@ -62,16 +59,14 @@ class GoogleDriveSourceAdapter(DocumentSourcePort):
 
         ``file_reference`` is the Drive file ID the producer supplies for the
         event; batch ingestion (``fetch_documents``) already accepts a file ID
-        via ``file_id`` and fetches it from the Drive API, so this only checks
-        that the reference looks like a Drive file ID rather than duplicating
-        that call here. Restricting it to the ID alphabet also rejects pasted
-        URLs and paths, and ``$VAR`` references that ``build_config_from_operator_params``
-        would otherwise resolve from the environment.
+        via ``file_id`` and fetches/validates it against the Drive API, so this
+        only does basic input validation rather than duplicating that call here.
         """
-        if not file_reference or not _DRIVE_FILE_ID_PATTERN.fullmatch(file_reference):
-            raise ValueError(
-                "File reference must be a Google Drive file ID (letters, digits, '-' and '_'), not a URL or path"
-            )
+        if not file_reference or not file_reference.strip():
+            raise ValueError("File reference must be a non-empty Google Drive file ID")
+        # build_config_from_operator_params resolves "$VAR" values from the environment.
+        if file_reference.startswith("$"):
+            raise ValueError("File reference must be a Google Drive file ID, not an environment variable")
 
         provider_config["file_id"] = file_reference
 

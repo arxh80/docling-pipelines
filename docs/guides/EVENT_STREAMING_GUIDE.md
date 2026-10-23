@@ -260,7 +260,7 @@ filesystem provider, the referenced path must be a readable regular file in the 
 the Docker sample, `/documents` is the mounted invoice directory. For `box_driver`, `file_reference` is the Box file ID
 (for example `"702199884861"`). For `dropbox`, `file_reference` is a Dropbox path (for example `/Reports/q1.pdf`) or
 file id (for example `id:abc123`). For `google_drive`, `file_reference` is the Drive file ID, the part after `/d/` in
-a file's share link (for example `1aBcD_2eFgHiJkLmNoPqRsTuVwXyZ`); URLs and paths are rejected. In all cases the
+a file's share link (for example `1aBcD_2eFgHiJkLmNoPqRsTuVwXyZ`). In all cases the
 flow's own `provider_config` still supplies the credentials, which are never read from the event.
 
 ### Processing failures
