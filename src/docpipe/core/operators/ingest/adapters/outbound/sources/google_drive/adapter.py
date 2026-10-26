@@ -64,9 +64,6 @@ class GoogleDriveSourceAdapter(DocumentSourcePort):
         """
         if not file_reference or not file_reference.strip():
             raise ValueError("File reference must be a non-empty Google Drive file ID")
-        # build_config_from_operator_params resolves "$VAR" values from the environment.
-        if file_reference.startswith("$"):
-            raise ValueError("File reference must be a Google Drive file ID, not an environment variable")
 
         provider_config["file_id"] = file_reference
 
